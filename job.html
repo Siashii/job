@@ -39,14 +39,20 @@
         .toolbar button {
             margin: 0 5px;
             padding: 10px;
-            background-color: #007BFF;
-            color: white;
             border: none;
             cursor: pointer;
             border-radius: 5px;
         }
+        #select-nor { background-color: #ff9999; }
+        #select-and { background-color: #99ff99; }
+        #select-or { background-color: #9999ff; }
+        #select-xor { background-color: #ffff99; }
+        #select-pulse { background-color: #ffcc99; }
+        #select-tflipflop { background-color: #99ccff; }
+        #select-led { background-color: #ff99ff; }
+        #select-conductor { background-color: #cccccc; }
         .toolbar button.active {
-            background-color: #0056b3;
+            outline: 3px solid black;
         }
         .toolbar input {
             margin-left: 10px;
@@ -86,6 +92,8 @@
 
         let selectedTool = null;
         let gridData = Array.from({ length: 30 }, () => Array(30).fill(null));
+        let isDrawingWire = false;
+        let startWire = null;
 
         // Create grid cells
         for (let y = 0; y < 30; y++) {
@@ -96,12 +104,53 @@
                 cell.dataset.y = y;
                 grid.appendChild(cell);
 
-                cell.addEventListener('click', () => {
-                    if (selectedTool) {
-                        cell.textContent = selectedTool;
+                cell.addEventListener('mousedown', () => {
+                    if (selectedTool === 'CONDUCTOR') {
+                        isDrawingWire = true;
+                        startWire = { x, y };
+                    } else if (selectedTool) {
+                        cell.textContent = '';
+                        cell.style.backgroundColor = getToolColor(selectedTool);
                         gridData[y][x] = { type: selectedTool, state: false };
                     }
                 });
+
+                cell.addEventListener('mouseup', () => {
+                    if (isDrawingWire && startWire) {
+                        drawWire(startWire.x, startWire.y, x, y);
+                        isDrawingWire = false;
+                        startWire = null;
+                    }
+                });
+            }
+        }
+
+        grid.addEventListener('mousemove', (event) => {
+            if (isDrawingWire && event.buttons === 1) {
+                const cell = event.target;
+                const x = parseInt(cell.dataset.x);
+                const y = parseInt(cell.dataset.y);
+
+                if (x !== undefined && y !== undefined) {
+                    drawWire(startWire.x, startWire.y, x, y);
+                }
+            }
+        });
+
+        function drawWire(x1, y1, x2, y2) {
+            if (x1 === x2 || y1 === y2) {
+                const minX = Math.min(x1, x2);
+                const maxX = Math.max(x1, x2);
+                const minY = Math.min(y1, y2);
+                const maxY = Math.max(y1, y2);
+
+                for (let x = minX; x <= maxX; x++) {
+                    for (let y = minY; y <= maxY; y++) {
+                        const cell = document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
+                        cell.style.backgroundColor = '#cccccc';
+                        gridData[y][x] = { type: 'CONDUCTOR', state: false };
+                    }
+                }
             }
         }
 
@@ -134,7 +183,8 @@
                         const x = cell.dataset.x;
                         const y = cell.dataset.y;
                         const item = gridData[y][x];
-                        cell.textContent = item ? item.type : '';
+                        cell.textContent = '';
+                        cell.style.backgroundColor = item ? getToolColor(item.type) : '#fff';
                     });
                 }
             } catch (error) {
@@ -142,25 +192,44 @@
             }
         });
 
+        function getToolColor(tool) {
+            const colors = {
+                NOR: '#ff9999',
+                AND: '#99ff99',
+                OR: '#9999ff',
+                XOR: '#ffff99',
+                PULSE: '#ffcc99',
+                'T-FLIPFLOP': '#99ccff',
+                LED: '#ff99ff',
+                CONDUCTOR: '#cccccc'
+            };
+            return colors[tool] || '#fff';
+        }
+
         // Function to toggle state of a cell
         function toggleCellState(x, y) {
             const cell = document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
             if (cell && gridData[y][x]) {
                 gridData[y][x].state = !gridData[y][x].state;
-                cell.style.backgroundColor = gridData[y][x].state ? '#FFD700' : '#fff';
+                cell.style.backgroundColor = gridData[y][x].state ? '#FFD700' : getToolColor(gridData[y][x].type);
             }
         }
 
         // Simulate pulse for buttons
         document.addEventListener('keydown', (event) => {
-            if (event.key === 'p' && selectedTool === 'PULSE') {
+            if (event.key === 'p') {
                 document.querySelectorAll('.cell').forEach(cell => {
                     const x = parseInt(cell.dataset.x);
                     const y = parseInt(cell.dataset.y);
 
-                    if (gridData[y][x]?.type === 'PULSE') {
+                    if (gridData[y][x] && gridData[y][x].type === 'PULSE') {
+                        gridData[y][x].state = true;
                         toggleCellState(x, y);
-                        setTimeout(() => toggleCellState(x, y), 200); // Reset after 200ms
+
+                        setTimeout(() => {
+                            gridData[y][x].state = false;
+                            toggleCellState(x, y);
+                        }, 200); // Short pulse duration
                     }
                 });
             }
