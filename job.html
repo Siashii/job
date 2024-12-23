@@ -3,73 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Point-and-Click Collection Game</title>
+    <title>Circuit Maker</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            text-align: center;
             margin: 0;
-            padding: 20px;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f4f4f4;
         }
-        button {
-            margin: 10px;
-            padding: 10px 20px;
-            font-size: 18px;
-        }
-        #inventory {
-            margin-top: 20px;
-            max-width: 500px;
-            margin-left: auto;
-            margin-right: auto;
-            border: 1px solid #ccc;
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(30, 20px);
+            grid-template-rows: repeat(30, 20px);
+            gap: 1px;
+            background-color: #ccc;
             padding: 10px;
-            background: #f9f9f9;
-            display: none;
+        }
+        .cell {
+            width: 20px;
+            height: 20px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+        .toolbar {
+            display: flex;
+            margin: 20px 0;
+        }
+        .toolbar button {
+            margin: 0 5px;
+            padding: 10px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .toolbar button.active {
+            background-color: #0056b3;
+        }
+        .toolbar input {
+            margin-left: 10px;
+        }
+        #output {
+            margin: 20px 0;
+            word-wrap: break-word;
+            max-width: 90%;
         }
     </style>
 </head>
 <body>
-    <h1>Point-and-Click Collection Game</h1>
-    <p>Choose a job to start collecting unique items!</p>
-    <div id="jobs">
-        <button onclick="performJob('Fishing')">Fishing</button>
-        <button onclick="performJob('Lumber')">Lumber</button>
-        <button onclick="performJob('Mining')">Mining</button>
-        <button onclick="performJob('Farming')">Farming</button>
-        <button onclick="performJob('Hunting')">Hunting</button>
-        <button onclick="performJob('Weapon Crafting')">Weapon Crafting</button>
+    <h1>Circuit Maker</h1>
+    <div class="toolbar">
+        <button id="select-and" data-type="AND">AND</button>
+        <button id="select-or" data-type="OR">OR</button>
+        <button id="select-not" data-type="NOT">NOT</button>
+        <button id="select-light" data-type="LIGHT">LIGHT</button>
+        <button id="select-wire" data-type="WIRE">WIRE</button>
+        <button id="save">Save</button>
+        <button id="load">Load</button>
+        <input id="load-input" type="text" placeholder="Enter code to load">
     </div>
-    <button onclick="viewInventory()">View Inventory</button>
-    <div id="inventory"></div>
+    <div id="grid"></div>
+    <div id="output"></div>
 
     <script>
-        const inventory = [];
-        const mutations = ['3-eyed', 'giant', 'tiny', 'glowing', 'mutated', 'legless', 'albino', 'spiky'];
+        const grid = document.getElementById('grid');
+        const toolbar = document.querySelector('.toolbar');
+        const saveButton = document.getElementById('save');
+        const loadButton = document.getElementById('load');
+        const loadInput = document.getElementById('load-input');
+        const output = document.getElementById('output');
 
-        const materials = {
-            Fishing: ['clownfish', 'salmon', 'tuna', 'shark'],
-            Lumber: ['oak wood', 'pine log', 'birch plank', 'mystic bark'],
-            Mining: ['gold nugget', 'iron ore', 'diamond', 'mystic gem'],
-            Farming: ['giant carrot', 'golden wheat', 'pumpkin', 'magic beans'],
-            Hunting: ['bear', 'deer', 'wolf', 'rabbit'],
-            WeaponCrafting: ['iron sword', 'golden bow', 'mystic dagger', 'spiked mace'],
-        };
+        let selectedTool = null;
+        let gridData = Array.from({ length: 30 }, () => Array(30).fill(null));
 
-        function performJob(job) {
-            const mutation = mutations[Math.floor(Math.random() * mutations.length)];
-            const material = materials[job][Math.floor(Math.random() * materials[job].length)];
-            const item = `${mutation} ${material}`;
-            inventory.push(item);
-            alert(`You performed ${job} and found: ${item}`);
+        // Create grid cells
+        for (let y = 0; y < 30; y++) {
+            for (let x = 0; x < 30; x++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.dataset.x = x;
+                cell.dataset.y = y;
+                grid.appendChild(cell);
+
+                cell.addEventListener('click', () => {
+                    if (selectedTool) {
+                        cell.textContent = selectedTool;
+                        gridData[y][x] = selectedTool;
+                    }
+                });
+            }
         }
 
-        function viewInventory() {
-            const inventoryDiv = document.getElementById('inventory');
-            inventoryDiv.style.display = 'block';
-            inventoryDiv.innerHTML = inventory.length === 0
-                ? '<p>Your inventory is empty!</p>'
-                : '<h3>Your Collected Items:</h3><ul>' + inventory.map(item => `<li>${item}</li>`).join('') + '</ul>';
-        }
+        // Toolbar button functionality
+        toolbar.addEventListener('click', (event) => {
+            if (event.target.tagName === 'BUTTON' && event.target.id !== 'save' && event.target.id !== 'load') {
+                selectedTool = event.target.dataset.type;
+                document.querySelectorAll('.toolbar button').forEach(btn => btn.classList.remove('active'));
+                event.target.classList.add('active');
+            }
+        });
+
+        // Save button functionality
+        saveButton.addEventListener('click', () => {
+            const saveCode = JSON.stringify(gridData);
+            output.textContent = `Save Code: ${btoa(saveCode)}`;
+        });
+
+        // Load button functionality
+        loadButton.addEventListener('click', () => {
+            try {
+                const loadCode = atob(loadInput.value);
+                const loadedData = JSON.parse(loadCode);
+
+                if (Array.isArray(loadedData)) {
+                    gridData = loadedData;
+
+                    // Update grid visuals
+                    document.querySelectorAll('.cell').forEach(cell => {
+                        const x = cell.dataset.x;
+                        const y = cell.dataset.y;
+                        cell.textContent = gridData[y][x];
+                    });
+                }
+            } catch (error) {
+                alert('Invalid load code');
+            }
+        });
     </script>
 </body>
 </html>
