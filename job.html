@@ -47,7 +47,6 @@
 </head>
 <body>
   <div class="toolbar" id="toolbar">
-    <!-- Buttons for components -->
     <button data-tool="nor">NOR Gate</button>
     <button data-tool="and">AND Gate</button>
     <button data-tool="or">OR Gate</button>
@@ -58,7 +57,7 @@
     <button data-tool="wire">Wire</button>
   </div>
   <canvas id="canvas"></canvas>
-  
+
   <script>
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
@@ -72,8 +71,8 @@
     const grid = Array.from({ length: rows }, () =>
       Array.from({ length: cols }, () => ({
         component: null,
-        state: false, // For LEDs, switches, etc.
-        connections: [], // Tracks connections to other cells
+        state: false, // For LEDs, buttons, and switches
+        connections: [], // Track connected cells
       }))
     );
 
@@ -96,16 +95,60 @@
       const x = Math.floor((e.clientX - rect.left) / cellSize);
       const y = Math.floor((e.clientY - rect.top) / cellSize);
 
+      const cell = grid[y][x];
+
       if (currentTool === 'wire') {
-        if (!grid[y][x].component) {
-          grid[y][x].component = 'wire';
+        if (!cell.component) {
+          cell.component = 'wire';
         }
+      } else if (currentTool === 'button' && cell.component === 'button') {
+        triggerPulse(cell, x, y);
       } else {
-        grid[y][x].component = currentTool;
-        grid[y][x].state = currentTool === 'led' ? false : undefined; // Initialize state for LEDs
+        cell.component = currentTool;
+        cell.state = currentTool === 'led' ? false : undefined; // Initialize state for LEDs
       }
+
       drawGrid();
     });
+
+    function triggerPulse(cell, x, y) {
+      if (cell.component !== 'button') return;
+
+      cell.state = true; // Turn button "on"
+      drawGrid();
+      setTimeout(() => {
+        propagateSignal(x, y);
+        cell.state = false; // Reset button "off"
+        drawGrid();
+      }, 200); // 200ms pulse
+    }
+
+    function propagateSignal(x, y) {
+      const neighbors = getNeighbors(x, y);
+
+      neighbors.forEach(([nx, ny]) => {
+        const neighbor = grid[ny][nx];
+        if (neighbor.component === 'led') {
+          neighbor.state = !neighbor.state; // Toggle LED
+        }
+        if (neighbor.component === 'wire') {
+          propagateSignal(nx, ny); // Continue signal propagation
+        }
+      });
+    }
+
+    function getNeighbors(x, y) {
+      const directions = [
+        [0, -1], // Up
+        [0, 1], // Down
+        [-1, 0], // Left
+        [1, 0], // Right
+      ];
+
+      return directions
+        .map(([dx, dy]) => [x + dx, y + dy])
+        .filter(([nx, ny]) => nx >= 0 && nx < cols && ny >= 0 && ny < rows);
+    }
 
     function drawGrid() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -116,7 +159,7 @@
 
           // Draw wires
           if (cell.component === 'wire') {
-            ctx.strokeStyle = '#A9A9A9'; // Gray color
+            ctx.strokeStyle = '#A9A9A9'; // Gray
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.moveTo(x * cellSize + cellSize / 2, y * cellSize);
@@ -144,7 +187,7 @@
                 drawGate(x, y, 'XOR');
                 break;
               case 'button':
-                drawButton(x, y);
+                drawButton(x, y, cell.state);
                 break;
               case 'switch':
                 drawSwitch(x, y, cell.state);
@@ -177,8 +220,8 @@
       ctx.fillText(label, x * cellSize + cellSize / 2, y * cellSize + cellSize / 2 + 4);
     }
 
-    function drawButton(x, y) {
-      ctx.fillStyle = '#FFA500'; // Orange
+    function drawButton(x, y, isPressed) {
+      ctx.fillStyle = isPressed ? '#FF4500' : '#FFA500'; // Darker orange when pressed
       ctx.beginPath();
       ctx.arc(
         x * cellSize + cellSize / 2,
