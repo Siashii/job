@@ -1,115 +1,148 @@
-import pygame
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wire and Gate System</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #f0f0f0;
+      height: 100vh;
+    }
+    canvas {
+      background-color: #ffffff;
+      border: 1px solid #000000;
+    }
+    .toolbar {
+      position: fixed;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #ffffff;
+      padding: 10px 20px;
+      border: 1px solid #000000;
+      border-radius: 5px;
+      display: flex;
+      gap: 10px;
+    }
+    .toolbar button {
+      padding: 10px;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    .toolbar button.active {
+      background-color: #007bff;
+      color: white;
+    }
+    .toolbar button:not(.active) {
+      background-color: #f0f0f0;
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button id="gateButton" class="active">Gate</button>
+    <button id="wireButton">Wire</button>
+  </div>
+  <canvas id="canvas"></canvas>
+  
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const cellSize = 40;
+    const rows = 15;
+    const cols = 20;
 
-# Initialize Pygame
-pygame.init()
+    canvas.width = cols * cellSize;
+    canvas.height = rows * cellSize;
 
-# Screen and grid settings
-screen_width, screen_height = 800, 600
-cell_size = 40
-grid_width, grid_height = screen_width // cell_size, screen_height // cell_size
+    const grid = Array.from({ length: rows }, () =>
+      Array.from({ length: cols }, () => ({ gate: false, wire: false }))
+    );
 
-# Colors
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-GRAY = (169, 169, 169)
-BLUE = (0, 0, 255)
-RED = (255, 0, 0)
+    let currentTool = 'gate'; // Default tool
 
-# Tools and grid setup
-tools = ["Gate", "Conductor"]
-current_tool = "Gate"
-grid = [[{"gate": None, "conductor": False} for _ in range(grid_width)] for _ in range(grid_height)]
+    // Tool buttons
+    const gateButton = document.getElementById('gateButton');
+    const wireButton = document.getElementById('wireButton');
 
-# Pygame setup
-screen = pygame.display.set_mode((screen_width, screen_height))
-pygame.display.set_caption("Wire and Gate System")
-clock = pygame.time.Clock()
+    gateButton.addEventListener('click', () => {
+      currentTool = 'gate';
+      gateButton.classList.add('active');
+      wireButton.classList.remove('active');
+    });
 
+    wireButton.addEventListener('click', () => {
+      currentTool = 'wire';
+      wireButton.classList.add('active');
+      gateButton.classList.remove('active');
+    });
 
-def draw_grid():
-    """Draw the grid and its contents."""
-    screen.fill(WHITE)
-    
-    for y in range(grid_height):
-        for x in range(grid_width):
-            cell = grid[y][x]
-            
-            # Draw conductors (as thin wires)
-            if cell["conductor"]:
-                pygame.draw.line(
-                    screen,
-                    GRAY,
-                    (x * cell_size + cell_size // 2, y * cell_size),
-                    (x * cell_size + cell_size // 2, (y + 1) * cell_size),
-                    3
-                )
-                pygame.draw.line(
-                    screen,
-                    GRAY,
-                    (x * cell_size, y * cell_size + cell_size // 2),
-                    ((x + 1) * cell_size, y * cell_size + cell_size // 2),
-                    3
-                )
-            
-            # Draw gates (as blue rectangles)
-            if cell["gate"]:
-                pygame.draw.rect(
-                    screen,
-                    BLUE,
-                    (x * cell_size + 5, y * cell_size + 5, cell_size - 10, cell_size - 10)
-                )
-            
-            # Draw grid lines
-            pygame.draw.rect(screen, BLACK, (x * cell_size, y * cell_size, cell_size, cell_size), 1)
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.floor((e.clientX - rect.left) / cellSize);
+      const y = Math.floor((e.clientY - rect.top) / cellSize);
 
+      if (currentTool === 'gate') {
+        grid[y][x].gate = true;
+        grid[y][x].wire = false; // Prioritize gate if overlapping
+      } else if (currentTool === 'wire') {
+        grid[y][x].wire = true;
+        // Wires and gates can coexist
+      }
+      drawGrid();
+    });
 
-def place_gate(x, y):
-    """Place a gate at the specified grid position."""
-    if not grid[y][x]["gate"]:  # Only place if there's no gate
-        grid[y][x]["gate"] = True  # Add a gate
-        grid[y][x]["conductor"] = False  # Remove conductor if overlapping
+    function drawGrid() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          const cell = grid[y][x];
 
-def place_conductor(x, y):
-    """Place a conductor at the specified grid position."""
-    grid[y][x]["conductor"] = True  # Add a conductor
-    # Gates and wires can coexist
+          // Draw wires (thin gray lines)
+          if (cell.wire) {
+            ctx.strokeStyle = '#A9A9A9'; // Gray color
+            ctx.lineWidth = 2;
 
+            // Vertical wire
+            ctx.beginPath();
+            ctx.moveTo(x * cellSize + cellSize / 2, y * cellSize);
+            ctx.lineTo(x * cellSize + cellSize / 2, (y + 1) * cellSize);
+            ctx.stroke();
 
-def handle_mouse_input():
-    """Handle mouse input for placing gates or wires."""
-    global current_tool
-    mouse_x, mouse_y = pygame.mouse.get_pos()
-    grid_x, grid_y = mouse_x // cell_size, mouse_y // cell_size
-    
-    if pygame.mouse.get_pressed()[0]:  # Left mouse button
-        if current_tool == "Gate":
-            place_gate(grid_x, grid_y)
-        elif current_tool == "Conductor":
-            place_conductor(grid_x, grid_y)
+            // Horizontal wire
+            ctx.beginPath();
+            ctx.moveTo(x * cellSize, y * cellSize + cellSize / 2);
+            ctx.lineTo((x + 1) * cellSize, y * cellSize + cellSize / 2);
+            ctx.stroke();
+          }
 
+          // Draw gates (blue squares)
+          if (cell.gate) {
+            ctx.fillStyle = '#007bff'; // Blue color
+            ctx.fillRect(
+              x * cellSize + 5,
+              y * cellSize + 5,
+              cellSize - 10,
+              cellSize - 10
+            );
+          }
 
-def main():
-    global current_tool
-    running = True
-    
-    while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_g:
-                    current_tool = "Gate"
-                elif event.key == pygame.K_c:
-                    current_tool = "Conductor"
-        
-        handle_mouse_input()
-        draw_grid()
-        pygame.display.flip()
-        clock.tick(60)
-    
-    pygame.quit()
+          // Draw grid lines
+          ctx.strokeStyle = '#000000'; // Black
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
+        }
+      }
+    }
 
-
-if __name__ == "__main__":
-    main()
+    drawGrid();
+  </script>
+</body>
+</html>
