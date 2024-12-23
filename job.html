@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wire and Gate System</title>
+  <title>Logic Gates Simulator</title>
   <style>
     body {
       margin: 0;
@@ -28,6 +28,7 @@
       border-radius: 5px;
       display: flex;
       gap: 10px;
+      flex-wrap: wrap;
     }
     .toolbar button {
       padding: 10px;
@@ -45,42 +46,49 @@
   </style>
 </head>
 <body>
-  <div class="toolbar">
-    <button id="gateButton" class="active">Gate</button>
-    <button id="wireButton">Wire</button>
+  <div class="toolbar" id="toolbar">
+    <!-- Buttons for components -->
+    <button data-tool="nor">NOR Gate</button>
+    <button data-tool="and">AND Gate</button>
+    <button data-tool="or">OR Gate</button>
+    <button data-tool="xor">XOR Gate</button>
+    <button data-tool="button">Button (Pulse)</button>
+    <button data-tool="switch">Switch (T-Flip-Flop)</button>
+    <button data-tool="led">LED</button>
+    <button data-tool="wire">Wire</button>
   </div>
   <canvas id="canvas"></canvas>
   
   <script>
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
-    const cellSize = 40;
-    const rows = 15;
-    const cols = 20;
+    const cellSize = 50;
+    const rows = 12;
+    const cols = 16;
 
     canvas.width = cols * cellSize;
     canvas.height = rows * cellSize;
 
     const grid = Array.from({ length: rows }, () =>
-      Array.from({ length: cols }, () => ({ gate: false, wire: false }))
+      Array.from({ length: cols }, () => ({
+        component: null,
+        state: false, // For LEDs, switches, etc.
+        connections: [], // Tracks connections to other cells
+      }))
     );
 
-    let currentTool = 'gate'; // Default tool
+    let currentTool = 'nor'; // Default tool
 
-    // Tool buttons
-    const gateButton = document.getElementById('gateButton');
-    const wireButton = document.getElementById('wireButton');
+    const toolbar = document.getElementById('toolbar');
+    toolbar.addEventListener('click', (e) => {
+      if (e.target.tagName === 'BUTTON') {
+        currentTool = e.target.dataset.tool;
 
-    gateButton.addEventListener('click', () => {
-      currentTool = 'gate';
-      gateButton.classList.add('active');
-      wireButton.classList.remove('active');
-    });
-
-    wireButton.addEventListener('click', () => {
-      currentTool = 'wire';
-      wireButton.classList.add('active');
-      gateButton.classList.remove('active');
+        // Update active button styles
+        [...toolbar.children].forEach((btn) =>
+          btn.classList.toggle('active', btn.dataset.tool === currentTool)
+        );
+      }
     });
 
     canvas.addEventListener('click', (e) => {
@@ -88,12 +96,13 @@
       const x = Math.floor((e.clientX - rect.left) / cellSize);
       const y = Math.floor((e.clientY - rect.top) / cellSize);
 
-      if (currentTool === 'gate') {
-        grid[y][x].gate = true;
-        grid[y][x].wire = false; // Prioritize gate if overlapping
-      } else if (currentTool === 'wire') {
-        grid[y][x].wire = true;
-        // Wires and gates can coexist
+      if (currentTool === 'wire') {
+        if (!grid[y][x].component) {
+          grid[y][x].component = 'wire';
+        }
+      } else {
+        grid[y][x].component = currentTool;
+        grid[y][x].state = currentTool === 'led' ? false : undefined; // Initialize state for LEDs
       }
       drawGrid();
     });
@@ -105,33 +114,45 @@
         for (let x = 0; x < cols; x++) {
           const cell = grid[y][x];
 
-          // Draw wires (thin gray lines)
-          if (cell.wire) {
+          // Draw wires
+          if (cell.component === 'wire') {
             ctx.strokeStyle = '#A9A9A9'; // Gray color
             ctx.lineWidth = 2;
-
-            // Vertical wire
             ctx.beginPath();
             ctx.moveTo(x * cellSize + cellSize / 2, y * cellSize);
             ctx.lineTo(x * cellSize + cellSize / 2, (y + 1) * cellSize);
-            ctx.stroke();
-
-            // Horizontal wire
-            ctx.beginPath();
             ctx.moveTo(x * cellSize, y * cellSize + cellSize / 2);
             ctx.lineTo((x + 1) * cellSize, y * cellSize + cellSize / 2);
             ctx.stroke();
           }
 
-          // Draw gates (blue squares)
-          if (cell.gate) {
-            ctx.fillStyle = '#007bff'; // Blue color
-            ctx.fillRect(
-              x * cellSize + 5,
-              y * cellSize + 5,
-              cellSize - 10,
-              cellSize - 10
-            );
+          // Draw components
+          if (cell.component) {
+            ctx.lineWidth = 1;
+
+            switch (cell.component) {
+              case 'nor':
+                drawGate(x, y, 'NOR');
+                break;
+              case 'and':
+                drawGate(x, y, 'AND');
+                break;
+              case 'or':
+                drawGate(x, y, 'OR');
+                break;
+              case 'xor':
+                drawGate(x, y, 'XOR');
+                break;
+              case 'button':
+                drawButton(x, y);
+                break;
+              case 'switch':
+                drawSwitch(x, y, cell.state);
+                break;
+              case 'led':
+                drawLED(x, y, cell.state);
+                break;
+            }
           }
 
           // Draw grid lines
@@ -140,6 +161,56 @@
           ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
         }
       }
+    }
+
+    function drawGate(x, y, label) {
+      ctx.fillStyle = '#007bff'; // Blue
+      ctx.fillRect(
+        x * cellSize + 10,
+        y * cellSize + 10,
+        cellSize - 20,
+        cellSize - 20
+      );
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(label, x * cellSize + cellSize / 2, y * cellSize + cellSize / 2 + 4);
+    }
+
+    function drawButton(x, y) {
+      ctx.fillStyle = '#FFA500'; // Orange
+      ctx.beginPath();
+      ctx.arc(
+        x * cellSize + cellSize / 2,
+        y * cellSize + cellSize / 2,
+        cellSize / 4,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+    }
+
+    function drawSwitch(x, y, state) {
+      ctx.fillStyle = state ? '#00FF00' : '#FF0000'; // Green if on, red if off
+      ctx.fillRect(
+        x * cellSize + 10,
+        y * cellSize + 10,
+        cellSize - 20,
+        cellSize - 20
+      );
+    }
+
+    function drawLED(x, y, state) {
+      ctx.fillStyle = state ? '#FF00FF' : '#9400D3'; // Pink if on, purple if off
+      ctx.beginPath();
+      ctx.arc(
+        x * cellSize + cellSize / 2,
+        y * cellSize + cellSize / 2,
+        cellSize / 4,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
     }
 
     drawGrid();
