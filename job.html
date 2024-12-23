@@ -61,11 +61,14 @@
 <body>
     <h1>Circuit Maker</h1>
     <div class="toolbar">
+        <button id="select-nor" data-type="NOR">NOR</button>
         <button id="select-and" data-type="AND">AND</button>
         <button id="select-or" data-type="OR">OR</button>
-        <button id="select-not" data-type="NOT">NOT</button>
-        <button id="select-light" data-type="LIGHT">LIGHT</button>
-        <button id="select-wire" data-type="WIRE">WIRE</button>
+        <button id="select-xor" data-type="XOR">XOR</button>
+        <button id="select-pulse" data-type="PULSE">PULSE</button>
+        <button id="select-tflipflop" data-type="T-FLIPFLOP">T-Flip Flop</button>
+        <button id="select-led" data-type="LED">LED</button>
+        <button id="select-conductor" data-type="CONDUCTOR">Conductor</button>
         <button id="save">Save</button>
         <button id="load">Load</button>
         <input id="load-input" type="text" placeholder="Enter code to load">
@@ -96,7 +99,7 @@
                 cell.addEventListener('click', () => {
                     if (selectedTool) {
                         cell.textContent = selectedTool;
-                        gridData[y][x] = selectedTool;
+                        gridData[y][x] = { type: selectedTool, state: false };
                     }
                 });
             }
@@ -130,11 +133,36 @@
                     document.querySelectorAll('.cell').forEach(cell => {
                         const x = cell.dataset.x;
                         const y = cell.dataset.y;
-                        cell.textContent = gridData[y][x];
+                        const item = gridData[y][x];
+                        cell.textContent = item ? item.type : '';
                     });
                 }
             } catch (error) {
                 alert('Invalid load code');
+            }
+        });
+
+        // Function to toggle state of a cell
+        function toggleCellState(x, y) {
+            const cell = document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
+            if (cell && gridData[y][x]) {
+                gridData[y][x].state = !gridData[y][x].state;
+                cell.style.backgroundColor = gridData[y][x].state ? '#FFD700' : '#fff';
+            }
+        }
+
+        // Simulate pulse for buttons
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'p' && selectedTool === 'PULSE') {
+                document.querySelectorAll('.cell').forEach(cell => {
+                    const x = parseInt(cell.dataset.x);
+                    const y = parseInt(cell.dataset.y);
+
+                    if (gridData[y][x]?.type === 'PULSE') {
+                        toggleCellState(x, y);
+                        setTimeout(() => toggleCellState(x, y), 200); // Reset after 200ms
+                    }
+                });
             }
         });
     </script>
