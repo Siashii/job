@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Point-and-Click Collection Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 18px;
+        }
+        #inventory {
+            margin-top: 20px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background: #f9f9f9;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Point-and-Click Collection Game</h1>
+    <p>Choose a job to start collecting unique items!</p>
+    <div id="jobs">
+        <button onclick="performJob('Fishing')">Fishing</button>
+        <button onclick="performJob('Lumber')">Lumber</button>
+        <button onclick="performJob('Mining')">Mining</button>
+        <button onclick="performJob('Farming')">Farming</button>
+        <button onclick="performJob('Hunting')">Hunting</button>
+        <button onclick="performJob('Weapon Crafting')">Weapon Crafting</button>
+    </div>
+    <button onclick="viewInventory()">View Inventory</button>
+    <div id="inventory"></div>
+
+    <script>
+        const inventory = [];
+        const mutations = ['3-eyed', 'giant', 'tiny', 'glowing', 'mutated', 'legless', 'albino', 'spiky'];
+
+        const materials = {
+            Fishing: ['clownfish', 'salmon', 'tuna', 'shark'],
+            Lumber: ['oak wood', 'pine log', 'birch plank', 'mystic bark'],
+            Mining: ['gold nugget', 'iron ore', 'diamond', 'mystic gem'],
+            Farming: ['giant carrot', 'golden wheat', 'pumpkin', 'magic beans'],
+            Hunting: ['bear', 'deer', 'wolf', 'rabbit'],
+            WeaponCrafting: ['iron sword', 'golden bow', 'mystic dagger', 'spiked mace'],
+        };
+
+        function performJob(job) {
+            const mutation = mutations[Math.floor(Math.random() * mutations.length)];
+            const material = materials[job][Math.floor(Math.random() * materials[job].length)];
+            const item = `${mutation} ${material}`;
+            inventory.push(item);
+            alert(`You performed ${job} and found: ${item}`);
+        }
+
+        function viewInventory() {
+            const inventoryDiv = document.getElementById('inventory');
+            inventoryDiv.style.display = 'block';
+            inventoryDiv.innerHTML = inventory.length === 0
+                ? '<p>Your inventory is empty!</p>'
+                : '<h3>Your Collected Items:</h3><ul>' + inventory.map(item => `<li>${item}</li>`).join('') + '</ul>';
+        }
+    </script>
+</body>
+</html>
