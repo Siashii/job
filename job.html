@@ -125,31 +125,20 @@
             }
         }
 
-        grid.addEventListener('mousemove', (event) => {
-            if (isDrawingWire && event.buttons === 1) {
-                const cell = event.target;
-                const x = parseInt(cell.dataset.x);
-                const y = parseInt(cell.dataset.y);
-
-                if (x !== undefined && y !== undefined) {
-                    drawWire(startWire.x, startWire.y, x, y);
-                }
-            }
-        });
-
+        // Restrict wire to horizontal or vertical lines
         function drawWire(x1, y1, x2, y2) {
-            if (x1 === x2 || y1 === y2) {
-                const minX = Math.min(x1, x2);
-                const maxX = Math.max(x1, x2);
-                const minY = Math.min(y1, y2);
-                const maxY = Math.max(y1, y2);
+            if (x1 !== x2 && y1 !== y2) return; // Only allow horizontal/vertical wires
 
-                for (let x = minX; x <= maxX; x++) {
-                    for (let y = minY; y <= maxY; y++) {
-                        const cell = document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
-                        cell.style.backgroundColor = '#cccccc';
-                        gridData[y][x] = { type: 'CONDUCTOR', state: false };
-                    }
+            const minX = Math.min(x1, x2);
+            const maxX = Math.max(x1, x2);
+            const minY = Math.min(y1, y2);
+            const maxY = Math.max(y1, y2);
+
+            for (let x = minX; x <= maxX; x++) {
+                for (let y = minY; y <= maxY; y++) {
+                    const cell = document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
+                    cell.style.backgroundColor = '#cccccc';
+                    gridData[y][x] = { type: 'CONDUCTOR', state: false };
                 }
             }
         }
@@ -178,7 +167,7 @@
                 if (Array.isArray(loadedData)) {
                     gridData = loadedData;
 
-                    // Update grid visuals
+                    // Reset grid visuals
                     document.querySelectorAll('.cell').forEach(cell => {
                         const x = cell.dataset.x;
                         const y = cell.dataset.y;
@@ -206,15 +195,6 @@
             return colors[tool] || '#fff';
         }
 
-        // Function to toggle state of a cell
-        function toggleCellState(x, y) {
-            const cell = document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
-            if (cell && gridData[y][x]) {
-                gridData[y][x].state = !gridData[y][x].state;
-                cell.style.backgroundColor = gridData[y][x].state ? '#FFD700' : getToolColor(gridData[y][x].type);
-            }
-        }
-
         // Simulate pulse for buttons
         document.addEventListener('keydown', (event) => {
             if (event.key === 'p') {
@@ -234,6 +214,14 @@
                 });
             }
         });
+
+        function toggleCellState(x, y) {
+            const cell = document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
+            if (cell && gridData[y][x]) {
+                gridData[y][x].state = !gridData[y][x].state;
+                cell.style.backgroundColor = gridData[y][x].state ? '#FFD700' : getToolColor(gridData[y][x].type);
+            }
+        }
     </script>
 </body>
 </html>
