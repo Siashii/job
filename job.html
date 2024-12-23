@@ -1,227 +1,115 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Circuit Maker</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background-color: #f4f4f4;
-        }
-        #grid {
-            display: grid;
-            grid-template-columns: repeat(30, 20px);
-            grid-template-rows: repeat(30, 20px);
-            gap: 1px;
-            background-color: #ccc;
-            padding: 10px;
-        }
-        .cell {
-            width: 20px;
-            height: 20px;
-            background-color: #fff;
-            border: 1px solid #ddd;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-        }
-        .toolbar {
-            display: flex;
-            margin: 20px 0;
-        }
-        .toolbar button {
-            margin: 0 5px;
-            padding: 10px;
-            border: none;
-            cursor: pointer;
-            border-radius: 5px;
-        }
-        #select-nor { background-color: #ff9999; }
-        #select-and { background-color: #99ff99; }
-        #select-or { background-color: #9999ff; }
-        #select-xor { background-color: #ffff99; }
-        #select-pulse { background-color: #ffcc99; }
-        #select-tflipflop { background-color: #99ccff; }
-        #select-led { background-color: #ff99ff; }
-        #select-conductor { background-color: #cccccc; }
-        .toolbar button.active {
-            outline: 3px solid black;
-        }
-        .toolbar input {
-            margin-left: 10px;
-        }
-        #output {
-            margin: 20px 0;
-            word-wrap: break-word;
-            max-width: 90%;
-        }
-    </style>
-</head>
-<body>
-    <h1>Circuit Maker</h1>
-    <div class="toolbar">
-        <button id="select-nor" data-type="NOR">NOR</button>
-        <button id="select-and" data-type="AND">AND</button>
-        <button id="select-or" data-type="OR">OR</button>
-        <button id="select-xor" data-type="XOR">XOR</button>
-        <button id="select-pulse" data-type="PULSE">PULSE</button>
-        <button id="select-tflipflop" data-type="T-FLIPFLOP">T-Flip Flop</button>
-        <button id="select-led" data-type="LED">LED</button>
-        <button id="select-conductor" data-type="CONDUCTOR">Conductor</button>
-        <button id="save">Save</button>
-        <button id="load">Load</button>
-        <input id="load-input" type="text" placeholder="Enter code to load">
-    </div>
-    <div id="grid"></div>
-    <div id="output"></div>
+import pygame
 
-    <script>
-        const grid = document.getElementById('grid');
-        const toolbar = document.querySelector('.toolbar');
-        const saveButton = document.getElementById('save');
-        const loadButton = document.getElementById('load');
-        const loadInput = document.getElementById('load-input');
-        const output = document.getElementById('output');
+# Initialize Pygame
+pygame.init()
 
-        let selectedTool = null;
-        let gridData = Array.from({ length: 30 }, () => Array(30).fill(null));
-        let isDrawingWire = false;
-        let startWire = null;
+# Screen and grid settings
+screen_width, screen_height = 800, 600
+cell_size = 40
+grid_width, grid_height = screen_width // cell_size, screen_height // cell_size
 
-        // Create grid cells
-        for (let y = 0; y < 30; y++) {
-            for (let x = 0; x < 30; x++) {
-                const cell = document.createElement('div');
-                cell.classList.add('cell');
-                cell.dataset.x = x;
-                cell.dataset.y = y;
-                grid.appendChild(cell);
+# Colors
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+GRAY = (169, 169, 169)
+BLUE = (0, 0, 255)
+RED = (255, 0, 0)
 
-                cell.addEventListener('mousedown', () => {
-                    if (selectedTool === 'CONDUCTOR') {
-                        isDrawingWire = true;
-                        startWire = { x, y };
-                    } else if (selectedTool) {
-                        cell.textContent = '';
-                        cell.style.backgroundColor = getToolColor(selectedTool);
-                        gridData[y][x] = { type: selectedTool, state: false };
-                    }
-                });
+# Tools and grid setup
+tools = ["Gate", "Conductor"]
+current_tool = "Gate"
+grid = [[{"gate": None, "conductor": False} for _ in range(grid_width)] for _ in range(grid_height)]
 
-                cell.addEventListener('mouseup', () => {
-                    if (isDrawingWire && startWire) {
-                        drawWire(startWire.x, startWire.y, x, y);
-                        isDrawingWire = false;
-                        startWire = null;
-                    }
-                });
-            }
-        }
+# Pygame setup
+screen = pygame.display.set_mode((screen_width, screen_height))
+pygame.display.set_caption("Wire and Gate System")
+clock = pygame.time.Clock()
 
-        // Restrict wire to horizontal or vertical lines
-        function drawWire(x1, y1, x2, y2) {
-            if (x1 !== x2 && y1 !== y2) return; // Only allow horizontal/vertical wires
 
-            const minX = Math.min(x1, x2);
-            const maxX = Math.max(x1, x2);
-            const minY = Math.min(y1, y2);
-            const maxY = Math.max(y1, y2);
+def draw_grid():
+    """Draw the grid and its contents."""
+    screen.fill(WHITE)
+    
+    for y in range(grid_height):
+        for x in range(grid_width):
+            cell = grid[y][x]
+            
+            # Draw conductors (as thin wires)
+            if cell["conductor"]:
+                pygame.draw.line(
+                    screen,
+                    GRAY,
+                    (x * cell_size + cell_size // 2, y * cell_size),
+                    (x * cell_size + cell_size // 2, (y + 1) * cell_size),
+                    3
+                )
+                pygame.draw.line(
+                    screen,
+                    GRAY,
+                    (x * cell_size, y * cell_size + cell_size // 2),
+                    ((x + 1) * cell_size, y * cell_size + cell_size // 2),
+                    3
+                )
+            
+            # Draw gates (as blue rectangles)
+            if cell["gate"]:
+                pygame.draw.rect(
+                    screen,
+                    BLUE,
+                    (x * cell_size + 5, y * cell_size + 5, cell_size - 10, cell_size - 10)
+                )
+            
+            # Draw grid lines
+            pygame.draw.rect(screen, BLACK, (x * cell_size, y * cell_size, cell_size, cell_size), 1)
 
-            for (let x = minX; x <= maxX; x++) {
-                for (let y = minY; y <= maxY; y++) {
-                    const cell = document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
-                    cell.style.backgroundColor = '#cccccc';
-                    gridData[y][x] = { type: 'CONDUCTOR', state: false };
-                }
-            }
-        }
 
-        // Toolbar button functionality
-        toolbar.addEventListener('click', (event) => {
-            if (event.target.tagName === 'BUTTON' && event.target.id !== 'save' && event.target.id !== 'load') {
-                selectedTool = event.target.dataset.type;
-                document.querySelectorAll('.toolbar button').forEach(btn => btn.classList.remove('active'));
-                event.target.classList.add('active');
-            }
-        });
+def place_gate(x, y):
+    """Place a gate at the specified grid position."""
+    if not grid[y][x]["gate"]:  # Only place if there's no gate
+        grid[y][x]["gate"] = True  # Add a gate
+        grid[y][x]["conductor"] = False  # Remove conductor if overlapping
 
-        // Save button functionality
-        saveButton.addEventListener('click', () => {
-            const saveCode = JSON.stringify(gridData);
-            output.textContent = `Save Code: ${btoa(saveCode)}`;
-        });
 
-        // Load button functionality
-        loadButton.addEventListener('click', () => {
-            try {
-                const loadCode = atob(loadInput.value);
-                const loadedData = JSON.parse(loadCode);
+def place_conductor(x, y):
+    """Place a conductor at the specified grid position."""
+    grid[y][x]["conductor"] = True  # Add a conductor
+    # Gates and wires can coexist
 
-                if (Array.isArray(loadedData)) {
-                    gridData = loadedData;
 
-                    // Reset grid visuals
-                    document.querySelectorAll('.cell').forEach(cell => {
-                        const x = cell.dataset.x;
-                        const y = cell.dataset.y;
-                        const item = gridData[y][x];
-                        cell.textContent = '';
-                        cell.style.backgroundColor = item ? getToolColor(item.type) : '#fff';
-                    });
-                }
-            } catch (error) {
-                alert('Invalid load code');
-            }
-        });
+def handle_mouse_input():
+    """Handle mouse input for placing gates or wires."""
+    global current_tool
+    mouse_x, mouse_y = pygame.mouse.get_pos()
+    grid_x, grid_y = mouse_x // cell_size, mouse_y // cell_size
+    
+    if pygame.mouse.get_pressed()[0]:  # Left mouse button
+        if current_tool == "Gate":
+            place_gate(grid_x, grid_y)
+        elif current_tool == "Conductor":
+            place_conductor(grid_x, grid_y)
 
-        function getToolColor(tool) {
-            const colors = {
-                NOR: '#ff9999',
-                AND: '#99ff99',
-                OR: '#9999ff',
-                XOR: '#ffff99',
-                PULSE: '#ffcc99',
-                'T-FLIPFLOP': '#99ccff',
-                LED: '#ff99ff',
-                CONDUCTOR: '#cccccc'
-            };
-            return colors[tool] || '#fff';
-        }
 
-        // Simulate pulse for buttons
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'p') {
-                document.querySelectorAll('.cell').forEach(cell => {
-                    const x = parseInt(cell.dataset.x);
-                    const y = parseInt(cell.dataset.y);
+def main():
+    global current_tool
+    running = True
+    
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_g:
+                    current_tool = "Gate"
+                elif event.key == pygame.K_c:
+                    current_tool = "Conductor"
+        
+        handle_mouse_input()
+        draw_grid()
+        pygame.display.flip()
+        clock.tick(60)
+    
+    pygame.quit()
 
-                    if (gridData[y][x] && gridData[y][x].type === 'PULSE') {
-                        gridData[y][x].state = true;
-                        toggleCellState(x, y);
 
-                        setTimeout(() => {
-                            gridData[y][x].state = false;
-                            toggleCellState(x, y);
-                        }, 200); // Short pulse duration
-                    }
-                });
-            }
-        });
-
-        function toggleCellState(x, y) {
-            const cell = document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
-            if (cell && gridData[y][x]) {
-                gridData[y][x].state = !gridData[y][x].state;
-                cell.style.backgroundColor = gridData[y][x].state ? '#FFD700' : getToolColor(gridData[y][x].type);
-            }
-        }
-    </script>
-</body>
-</html>
+if __name__ == "__main__":
+    main()
